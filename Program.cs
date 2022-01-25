@@ -2,8 +2,8 @@
 
 Console.WriteLine("Hello, Abstract Factory :D");
 
-var coffee = new HotDrinkMachine().MakeHotDrink(HotDrinkMachine.AvaliableHotDrink.Coffee, 100);
-coffee.Consume();
+var cappuccino = new HotDrinkMachine().MakeHotDrink<Cappuccino>(100);
+cappuccino.Consume();
 
 
 namespace AbstractFactoryPatternSample
@@ -29,6 +29,14 @@ namespace AbstractFactoryPatternSample
         }
     }
 
+    public class Cappuccino : IHotDrink
+    {
+        public void Consume()
+        {
+            Console.WriteLine("Drink cappuccino and enjoy!");
+        }
+    }
+
     public interface IHotDrinkFactory
     {
         IHotDrink Prepare(int amount);
@@ -47,34 +55,37 @@ namespace AbstractFactoryPatternSample
     {
         public IHotDrink Prepare(int amount)
         {
-            Console.WriteLine($"The tea prepared with {amount} ml tea");
+            Console.WriteLine($"The coffee prepared with {amount} ml coffee");
             return new Coffee();
+        }
+    }
+
+    public class CappuccinoFactory : IHotDrinkFactory
+    {
+        public IHotDrink Prepare(int amount)
+        {
+            Console.WriteLine($"The cappuccino prepared with {amount} ml cappuccino");
+            return new Cappuccino();
         }
     }
 
     public class HotDrinkMachine
     {
-        public enum AvaliableHotDrink
-        {
-            Tea,
-            Coffee
-        }
-
-        private readonly Dictionary<AvaliableHotDrink, IHotDrinkFactory> _hotDrinkFactoryTypes = new();
+        private readonly Dictionary<Type, IHotDrinkFactory> _hotDrinkFactoryTypes = new();
 
         public HotDrinkMachine()
         {
-            foreach (var drinkType in Enum.GetValues(typeof(AvaliableHotDrink)).Cast<AvaliableHotDrink>())
+            foreach (var drinkType in typeof(IHotDrink).Assembly.GetTypes().Where(t => typeof(IHotDrink).IsAssignableFrom(t) && t.IsClass && !t.IsAbstract && !t.IsInterface).ToList())
             {
-                if (Activator.CreateInstance(Type.GetType($"AbstractFactoryPatternSample.{Enum.GetName(drinkType)}Factory")) is not IHotDrinkFactory hotDrinkFactoryType) continue;
+                if (Activator.CreateInstance(Type.GetType($"AbstractFactoryPatternSample.{drinkType.Name}Factory")) is not IHotDrinkFactory hotDrinkFactoryType) continue;
 
                 _hotDrinkFactoryTypes.Add(drinkType, hotDrinkFactoryType);
             }
         }
 
-        public IHotDrink MakeHotDrink(AvaliableHotDrink hotDrink, int amount)
+        public IHotDrink MakeHotDrink<THotDrink>(int amount) where THotDrink : IHotDrink
         {
-            return _hotDrinkFactoryTypes[hotDrink].Prepare(amount);
+            return _hotDrinkFactoryTypes[typeof(THotDrink)].Prepare(amount);
         }
     }
 }
